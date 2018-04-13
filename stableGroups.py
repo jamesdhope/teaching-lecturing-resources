@@ -1,12 +1,8 @@
+#  Author : James Hope          
+#  Date   : 13 April 2018          
+        
 import sys
-import requests
 import numpy as np
-import json
-from time import time
-from urllib.parse import urlparse
-from uuid import uuid4
-import pandas as pd
-from flask import Flask, jsonify, request
 
 debug = False
 
