@@ -83,8 +83,8 @@ class Acceptor:
         """
         Return the preference of the acceptor for the proposer passed. Return 0 if value is null or if the preference is not in the list.
         """
-        if (proposer==null_position or acceptor==null_position): 
-            return 0
+        #if (proposer==null_position) or (acceptor==null_position): 
+        #    return 0
 
         if proposer in self.values[acceptor-1]:
             return self.values[acceptor-1].index(proposer)+1
@@ -105,9 +105,9 @@ class Acceptor:
 
         if orphan_round: 
             # If Orphan then If Engagements empty accept, Elseif better than current engagement accept; Else reject (i.e. not listed)
-            if (np.isnan(pool_object.get_current_engagement(acceptor)) and np.isnan(pool_object.get_current_engagement(proposer)) and (self.get_preference_number(acceptor,proposer,null_position)!=0) and pools_object.is_orphan(proposer) and pools_object.is_valid_engagement(acceptor,proposer)):
+            if (np.isnan(pool_object.get_current_engagement(acceptor)) and np.isnan(pool_object.get_current_engagement(proposer)) and pools_object.is_orphan(proposer) and pools_object.is_valid_engagement(acceptor,proposer) and (self.get_preference_number(acceptor,proposer,null_position)!=0)):
                 return True
-            elif (pools_object.is_orphan(proposer) and pools_object.is_valid_engagement(acceptor,proposer) and (self.get_preference_number(acceptor,proposer,null_position)!=0) and (self.get_preference_number(acceptor,proposer,null_position) < self.get_preference_number(acceptor,pool_object.get_current_engagement(acceptor),null_position))): 
+            elif ((pools_object.is_orphan(proposer) and pools_object.is_valid_engagement(acceptor,proposer) and (self.get_preference_number(acceptor,proposer,null_position)!=0) and (self.get_preference_number(acceptor,proposer,null_position) < self.get_preference_number(acceptor,pool_object.get_current_engagement(acceptor),null_position)))): 
                 return True 
             else:
                 return False
@@ -115,7 +115,7 @@ class Acceptor:
             # Same logic as above but do not restrict to orphans
             if (np.isnan(pool_object.get_current_engagement(acceptor)) and np.isnan(pool_object.get_current_engagement(proposer)) and (self.get_preference_number(acceptor,proposer,null_position)!=0) and pools_object.is_valid_engagement(acceptor,proposer)):
                 return True
-            elif (pools_object.is_valid_engagement(acceptor,proposer) and (self.get_preference_number(acceptor,proposer,null_position)!=0) and (self.get_preference_number(acceptor,proposer,null_position) < self.get_preference_number(acceptor,pool_object.get_current_engagement(acceptor),null_position))): 
+            elif ((pools_object.is_valid_engagement(acceptor,proposer) and (self.get_preference_number(acceptor,proposer,null_position)!=0) and (self.get_preference_number(acceptor,proposer,null_position) < self.get_preference_number(acceptor,pool_object.get_current_engagement(acceptor),null_position)))): 
                 return True 
             else:
                 return False
@@ -206,8 +206,6 @@ def encode(names,name):
     """
     Return the index of the name in the list of names
     """
-    #if names.index(name):
-    #print(names.index(name)+1, name)
     return names.index(name)+1
 
 def return_null_position(names):
@@ -221,32 +219,32 @@ def is_set_size_allowed(acceptors_table,pool_object,names,preference,proposer,pr
     If engagement creates a set size that exeeds max_set_size return False; otherwise return True 
     """
     # create dummy pool and pools
-    #pool_test = Pool(acceptors_table)
+    pool_test = Pool(acceptors_table)
     pool_test = copy.deepcopy(pool_object)     
     pool_test.new_engagement(proposer_object.get_proposal(proposer,preference),proposer+1)
     
-    #pools_test = Pools()
+    pools_test = Pools()
     pools_test = copy.deepcopy(pools_object)  
     pools_test.add_pool(pool_test)
     
-    if (len(build_groups(names,build_pairs(names,pools_test),pools_test))>max_set_size):
-        return False 
+    if (len(build_groups(names,build_pairs(names,pools_test),pools_test))>max_set_size):        
+        #print(build_groups(names,build_pairs(names,pools_object),pools_object))        
+        return False
         
     del pool_test
     del pools_test
         
     return True
 
-def encode_preferences(preferences,names):
+def encode_preferences(preferences,names,no_of_preferences):
     """
     Encode the preferences 
     """
     df = pd.DataFrame(data=preferences)
-    df[0] = df[0].apply(lambda x: encode(names,x)) #encode preference 1
-    df[1] = df[1].apply(lambda x: encode(names,x)) #encode preference 2
-    df[2] = df[2].apply(lambda x: encode(names,x)) #encode preference 3
-    df[3] = df[3].apply(lambda x: encode(names,x)) #encode preference 4
-    df[4] = df[4].apply(lambda x: encode(names,x)) #encode preference 5
+    
+    for i in range(0,no_of_preferences):
+        df[i] = df[i].apply(lambda x: encode(names,x))
+
     return(df.values.tolist())
 
 def dec(names,index):
@@ -258,8 +256,7 @@ def dec(names,index):
 def decode(pairs,names):
     """
     Decode the engagements
-    """
-    #df = pd.DataFrame(data=engagements).astype(int)    
+    """  
     df = pd.DataFrame(data=pairs)
     df[0] = df[0].fillna(-2)  
     df = pd.DataFrame(data=pairs).astype(int)    
@@ -310,7 +307,7 @@ def stable_marriage(pools_object,proposer_object,proposers_table,accepter_object
         
 def build_pairs(names,pools_object):
     """
-    Build a list of all Stable Pairs
+    Build a list of all stable pairs by fetching pairs from each pool_object in the pools_object
     """
     pairs = pd.DataFrame()
     pairs[0] = names
@@ -352,17 +349,17 @@ def build_groups(names,pairs,pools_object):
     pairs = pairs.fillna(value="null")
     
     #only perform traverse if we have a minimum of two columns
-    if pairs.shape[1]>2:
-
+    if pairs.shape[1]>1:
+        
         #create sets for members at first level
         for i in range(len(names)):
             result = list(get_union(list([pairs[0][i]]),list([pairs[1][i]])))
             if result not in sets:
                 sets.append(result)
-        if debug: print("output of level1 join", sets)
+        #print("output of level1 join", sets)
     
         # Now join level2, level3 etc members and maintain the trees
-        for i in range(2,pools_object.length()+1):
+        for i in range(2,pools_object.length()+1): #or   #pairs.shape[1]
             for j in range(len(names)):
                 index_to_join = -1
                 index_to_remove = -1
@@ -380,11 +377,12 @@ def build_groups(names,pairs,pools_object):
                         if debug: print("index to join",index_to_join)
     
                 if (index_to_join==index_to_remove):
+                    #print("idex to join = index to remove")
                     pass
                 elif ((index_to_remove!=-1) and (index_to_join!=-1)):
                     sets[index_to_join] = list(get_union(sets[index_to_join],sets[index_to_remove]))
                     sets.pop(index_to_remove) 
-
+    
     df = pd.DataFrame(data=sets)
     df = df.transpose()
     return df 
@@ -392,9 +390,9 @@ def build_groups(names,pairs,pools_object):
 def main():
 
     try:
-        input_file = "Preferences3.csv"
+        input_file = "Preferences4.csv"
         #input_file = sys.argv[1]
-        iteration = 3
+        iteration = 2
         #iteration = int(sys.argv[2]) # Number of runs of stable pairs algoirthm. Subsequent runs ignore stable pairs already built.
         no_of_preferences = 5
         #no_of_preferences = int(sys.argv[3]) # Number of preferences to read from input file
@@ -415,8 +413,7 @@ def main():
     
     # Import and Encode the preferences data
     preferences,names = import_preferences(input_file) 
-    preferences = encode_preferences(preferences,names)
-    #print("\n Input file with {} preferences read and encoded successfully as \n ")
+    preferences = encode_preferences(preferences,names,no_of_preferences)
     print("\n Input file with {} preferences read and encoded successfully as \n {}".format(no_of_preferences, preferences))
 
     null_position = return_null_position(names)
@@ -445,8 +442,7 @@ def main():
 
     # Convert engagements to sets and write to file
     groups = build_groups(names,pairs,pools_object)
-    #print("\n Writing sets to file (a set is a column)\n {}".format(sets))
-    print("\n Writing sets to file (a set is a column)\n")
+    print("\n Writing sets to file (a set is a column)\n {}".format(groups))
     print("length of groups", len(groups))
     groups.to_csv(output_file_sets)
 
